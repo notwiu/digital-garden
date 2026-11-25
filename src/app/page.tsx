@@ -1,442 +1,619 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import {
-  Sprout,
-  LayoutDashboard,
-  Library,
-  Network,
-  Lightbulb,
-  FolderKanban,
-  CalendarDays,
-  Search,
-  Plus,
-  ArrowUpRight,
-  ArrowRight,
-  MoreHorizontal,
-  Leaf,
-  BookOpen,
-  Globe,
-  FileText,
-  Video,
-  X,
-  Sparkles,
-  Command,
-  Settings2,
-  ChevronDown,
+  Sprout, LayoutGrid, Library, Network, Lightbulb,
+  FolderKanban, CalendarDays, Search, Plus, Bell,
+  Settings, MoreHorizontal, FileText, Globe, Video,
+  Image as ImageIcon, Link2, ArrowUpRight, ChevronDown,
+  X, Check, Clock3, Command, Leaf, ArrowRight,
+  Bookmark, SlidersHorizontal, Sparkles
 } from "lucide-react";
 
-const navigation = [
-  {
-    label: "YOUR SPACE",
-    items: [
-      { name: "Overview", icon: LayoutDashboard },
-      { name: "My garden", icon: Library },
-      { name: "Knowledge map", icon: Network },
-      { name: "Ideas lab", icon: Lightbulb },
-    ],
-  },
-  {
-    label: "ORGANIZE",
-    items: [
-      { name: "Projects", icon: FolderKanban },
-      { name: "Events", icon: CalendarDays },
-    ],
-  },
-];
+type Reference = {
+  id: number;
+  title: string;
+  source: string;
+  category: string;
+  type: "artigo" | "site" | "vídeo" | "arquivo";
+  date: string;
+  status: "Organizado" | "Pendente";
+};
 
-const initialReferences = [
+const initialReferences: Reference[] = [
   {
     id: 1,
-    title: "The age of AI agents",
-    source: "Anthropic · Research",
-    category: "Artificial Intelligence",
-    type: "article",
-    date: "Today",
-    color: "sage",
+    title: "O futuro dos agentes de inteligência artificial",
+    source: "Anthropic · Pesquisa",
+    category: "Inteligência artificial",
+    type: "artigo",
+    date: "Hoje, 09:32",
+    status: "Organizado",
   },
   {
     id: 2,
-    title: "Designing with simplicity",
-    source: "Web · Design",
-    category: "Design",
-    type: "website",
-    date: "Yesterday",
-    color: "sand",
+    title: "Princípios de design para produtos digitais",
+    source: "Awwwards · Inspiração",
+    category: "Design e UX",
+    type: "site",
+    date: "Ontem, 18:45",
+    status: "Organizado",
   },
   {
     id: 3,
-    title: "How the brain learns",
-    source: "YouTube · Video",
-    category: "Neuroscience",
-    type: "video",
-    date: "Nov 22",
-    color: "blue",
+    title: "Como funciona a memória humana",
+    source: "YouTube · Documentário",
+    category: "Ciência",
+    type: "vídeo",
+    date: "23 nov, 14:20",
+    status: "Pendente",
+  },
+  {
+    id: 4,
+    title: "Anotações sobre arquitetura de software",
+    source: "Documento pessoal",
+    category: "Desenvolvimento",
+    type: "arquivo",
+    date: "22 nov, 11:10",
+    status: "Organizado",
   },
 ];
 
-const typeIcons = {
-  article: FileText,
-  website: Globe,
-  video: Video,
+const navigation = [
+  {
+    title: "ESPAÇO PESSOAL",
+    items: [
+      { label: "Visão geral", icon: LayoutGrid },
+      { label: "Biblioteca", icon: Library },
+      { label: "Mapa de conhecimento", icon: Network },
+      { label: "Laboratório de ideias", icon: Lightbulb },
+    ],
+  },
+  {
+    title: "SEU TRABALHO",
+    items: [
+      { label: "Projetos", icon: FolderKanban },
+      { label: "Agenda", icon: CalendarDays },
+    ],
+  },
+];
+
+const topics = [
+  { name: "Inteligência artificial", count: 18, color: "#668B73" },
+  { name: "Desenvolvimento", count: 14, color: "#718DAF" },
+  { name: "Design e UX", count: 9, color: "#C18B61" },
+  { name: "Ciência", count: 7, color: "#9585AD" },
+];
+
+const iconByType = {
+  artigo: FileText,
+  site: Globe,
+  vídeo: Video,
+  arquivo: ImageIcon,
 };
 
 export default function Home() {
-  const [activePage, setActivePage] = useState("Overview");
+  const [activePage, setActivePage] = useState("Visão geral");
+  const [references, setReferences] = useState(initialReferences);
   const [search, setSearch] = useState("");
   const [showCapture, setShowCapture] = useState(false);
-  const [newTitle, setNewTitle] = useState("");
-  const [references, setReferences] = useState(initialReferences);
+  const [captureTitle, setCaptureTitle] = useState("");
+  const [captureUrl, setCaptureUrl] = useState("");
+  const [captureCategory, setCaptureCategory] = useState("");
+  const [captureType, setCaptureType] = useState("artigo");
+  const [noticeOpen, setNoticeOpen] = useState(false);
 
-  const filteredReferences = useMemo(
-    () =>
-      references.filter((reference) =>
-        `${reference.title} ${reference.category}`
-          .toLowerCase()
-          .includes(search.toLowerCase())
-      ),
-    [references, search]
-  );
+  const filteredReferences = useMemo(() => {
+    const query = search.toLowerCase().trim();
 
-  function addReference(event: React.FormEvent<HTMLFormElement>) {
+    return references.filter((item) =>
+      `${item.title} ${item.category} ${item.source}`
+        .toLowerCase()
+        .includes(query)
+    );
+  }, [references, search]);
+
+  const pendingCount = references.filter(
+    (item) => item.status === "Pendente"
+  ).length;
+
+  const organizedCount = references.length - pendingCount;
+
+  function handleCapture(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!newTitle.trim()) return;
+    if (!captureTitle.trim()) return;
 
-    setReferences((current) => [
-      {
-        id: Date.now(),
-        title: newTitle.trim(),
-        source: "Added manually",
-        category: "Uncategorized",
-        type: "article",
-        date: "Just now",
-        color: "sage",
-      },
-      ...current,
-    ]);
+    const item: Reference = {
+      id: Date.now(),
+      title: captureTitle.trim(),
+      source: captureUrl.trim() || "Adicionado manualmente",
+      category: captureCategory.trim() || "Sem categoria",
+      type: captureType as Reference["type"],
+      date: "Agora",
+      status: "Pendente",
+    };
 
-    setNewTitle("");
+    setReferences((current) => [item, ...current]);
+    setCaptureTitle("");
+    setCaptureUrl("");
+    setCaptureCategory("");
+    setCaptureType("artigo");
     setShowCapture(false);
+  }
+
+  function organizeReference(id: number) {
+    setReferences((current) =>
+      current.map((item) =>
+        item.id === id ? { ...item, status: "Organizado" } : item
+      )
+    );
   }
 
   return (
     <main className="garden-shell">
-      <aside className="sidebar">
-        <a href="#" className="brand">
-          <span className="brand-icon">
-            <Sprout size={21} strokeWidth={1.7} />
-          </span>
-          <span>garden<span className="brand-dot">.</span></span>
+      <aside className="garden-sidebar">
+        <a className="garden-brand" href="#">
+          <span className="brand-symbol"><Sprout size={20} strokeWidth={1.8} /></span>
+          <span className="brand-word">garden<span>.</span></span>
         </a>
 
-        <div className="workspace">
-          <div className="workspace-avatar">W</div>
-          <div className="workspace-info">
-            <strong>Personal space</strong>
-            <span>Free garden</span>
-          </div>
-          <ChevronDown size={15} className="muted-icon" />
-        </div>
+        <button className="workspace-switch">
+          <span className="workspace-avatar">W</span>
+          <span className="workspace-info">
+            <strong>Meu jardim</strong>
+            <small>Espaço pessoal</small>
+          </span>
+          <ChevronDown size={15} />
+        </button>
 
-        <nav className="navigation">
+        <button
+          className="capture-button"
+          onClick={() => setShowCapture(true)}
+        >
+          <Plus size={17} />
+          <span>Nova referência</span>
+          <kbd>N</kbd>
+        </button>
+
+        <nav className="garden-nav">
           {navigation.map((section) => (
-            <div className="nav-section" key={section.label}>
-              <p className="nav-label">{section.label}</p>
-              {section.items.map((item) => {
-                const Icon = item.icon;
-                const active = activePage === item.name;
+            <div className="nav-group" key={section.title}>
+              <span className="nav-label">{section.title}</span>
 
-                return (
-                  <button
-                    key={item.name}
-                    onClick={() => setActivePage(item.name)}
-                    className={`nav-item ${active ? "active" : ""}`}
-                  >
-                    <Icon size={17} strokeWidth={1.8} />
-                    <span>{item.name}</span>
-                    {item.name === "My garden" && (
-                      <span className="nav-count">{references.length}</span>
-                    )}
-                  </button>
-                );
-              })}
+              {section.items.map(({ label, icon: Icon }) => (
+                <button
+                  key={label}
+                  className={`garden-nav-item ${activePage === label ? "selected" : ""}`}
+                  onClick={() => setActivePage(label)}
+                >
+                  <Icon size={17} strokeWidth={1.8} />
+                  <span>{label}</span>
+                  {label === "Biblioteca" && (
+                    <small>{String(references.length).padStart(2, "0")}</small>
+                  )}
+                </button>
+              ))}
             </div>
           ))}
         </nav>
 
-        <div className="sidebar-bottom">
-          <div className="garden-tip">
-            <div className="tip-icon">
-              <Leaf size={17} />
-            </div>
-            <p className="tip-title">A little reminder</p>
-            <p className="tip-text">
-              Great ideas grow when you give them room to connect.
-            </p>
+        <div className="sidebar-lower">
+          <div className="sidebar-note">
+            <div className="sidebar-note-icon"><Leaf size={17} /></div>
+            <span className="sidebar-note-kicker">UMA IDEIA PARA HOJE</span>
+            <p>Pequenas descobertas podem se tornar grandes projetos.</p>
+            <button onClick={() => setActivePage("Laboratório de ideias")}>
+              Explorar ideias <ArrowUpRight size={13} />
+            </button>
           </div>
 
-          <button className="nav-item settings-button">
-            <Settings2 size={17} />
-            <span>Settings</span>
+          <button className="garden-nav-item settings-link">
+            <Settings size={17} strokeWidth={1.8} />
+            <span>Configurações</span>
           </button>
 
-          <div className="profile">
+          <div className="sidebar-profile">
             <div className="profile-avatar">W</div>
             <div className="profile-info">
-              <strong>My account</strong>
-              <span>Personal workspace</span>
+              <strong>Willian</strong>
+              <small>Conta pessoal</small>
             </div>
-            <MoreHorizontal size={18} className="muted-icon" />
+            <MoreHorizontal size={18} />
           </div>
         </div>
       </aside>
 
-      <section className="main-area">
-        <header className="topbar">
-          <div className="breadcrumb">
-            <span>My space</span>
-            <span className="breadcrumb-slash">/</span>
+      <section className="garden-main">
+        <header className="garden-topbar">
+          <div className="topbar-context">
+            <span>Meu jardim</span>
+            <span className="context-slash">/</span>
             <strong>{activePage}</strong>
           </div>
 
-          <div className="topbar-actions">
-            <div className="search-box">
+          <div className="topbar-tools">
+            <label className="garden-search">
               <Search size={16} />
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search your garden..."
+                placeholder="Buscar no jardim..."
               />
-              <kbd>⌘ K</kbd>
+              <kbd><Command size={10} /> K</kbd>
+            </label>
+
+            <div className="notice-container">
+              <button
+                className={`icon-action ${noticeOpen ? "is-open" : ""}`}
+                onClick={() => setNoticeOpen((value) => !value)}
+                aria-label="Notificações"
+              >
+                <Bell size={18} />
+                {pendingCount > 0 && <i />}
+              </button>
+
+              {noticeOpen && (
+                <div className="notice-popover">
+                  <strong>Seu jardim</strong>
+                  <p>
+                    {pendingCount > 0
+                      ? `Você tem ${pendingCount} referência(s) esperando organização.`
+                      : "Tudo em ordem. Nenhuma referência pendente."}
+                  </p>
+                  <button onClick={() => setNoticeOpen(false)}>Fechar</button>
+                </div>
+              )}
             </div>
+
             <button
-              className="capture-button"
+              className="top-capture"
               onClick={() => setShowCapture(true)}
             >
-              <Plus size={17} />
-              <span>Capture</span>
+              <Plus size={16} />
+              <span>Adicionar</span>
             </button>
           </div>
         </header>
 
-        <div className="dashboard">
-          <div className="welcome-row">
+        <div className="garden-content">
+          <section className="page-intro">
             <div>
-              <div className="eyebrow">
-                <span className="eyebrow-line" />
-                YOUR PERSONAL KNOWLEDGE SPACE
+              <div className="intro-date">
+                <span className="date-line" />
+                QUARTA-FEIRA, 25 DE NOVEMBRO
               </div>
-              <h1>
-                Everything you discover,
+              <h1>Bom dia, Willian<span className="intro-flower">✳</span></h1>
+              <p>Um espaço para guardar o que desperta sua curiosidade.</p>
+            </div>
+
+            <button
+              className="intro-link"
+              onClick={() => setActivePage("Biblioteca")}
+            >
+              Sua biblioteca <ArrowRight size={15} />
+            </button>
+          </section>
+
+          <section className="garden-hero">
+            <div className="hero-copy">
+              <span className="hero-overline">
+                <Sparkles size={13} /> SEU CONHECIMENTO EM MOVIMENTO
+              </span>
+
+              <h2>
+                Ideias crescem
                 <br />
-                <em>has a place to grow.</em>
-              </h1>
-              <p className="welcome-description">
-                A quiet space for curious minds. Collect ideas, connect
-                knowledge and grow something meaningful.
+                quando se <em>conectam.</em>
+              </h2>
+
+              <p>
+                Cada referência é uma semente. Explore seus interesses,
+                descubra novas relações e transforme curiosidade em criação.
               </p>
-            </div>
 
-            <div className="welcome-decoration" aria-hidden="true">
-              <div className="decoration-circle circle-one" />
-              <div className="decoration-circle circle-two" />
-              <Sprout size={84} strokeWidth={0.8} />
-              <span className="decoration-sparkle">✳</span>
-            </div>
-          </div>
+              <button
+                className="hero-button"
+                onClick={() => setActivePage("Mapa de conhecimento")}
+              >
+                Explorar meu jardim <ArrowUpRight size={15} />
+              </button>
 
-          <div className="stats-row">
-            <div className="stat">
-              <span className="stat-label">COLLECTED</span>
-              <div className="stat-value">
-                {references.length.toString().padStart(2, "0")}
-                <span className="stat-unit">references</span>
+              <div className="hero-footnote">
+                <span className="hero-footnote-dot" />
+                SEU ESPAÇO DE DESCOBERTAS
               </div>
             </div>
-            <div className="stat-divider" />
-            <div className="stat">
-              <span className="stat-label">CULTIVATING</span>
-              <div className="stat-value">
-                04<span className="stat-unit">topics</span>
-              </div>
-            </div>
-            <div className="stat-divider" />
-            <div className="stat">
-              <span className="stat-label">GROWING</span>
-              <div className="stat-value">
-                08<span className="stat-unit">ideas</span>
-              </div>
-            </div>
-            <div className="stat-note">
-              <Sparkles size={15} />
-              <span>Your garden is just getting started.</span>
-            </div>
-          </div>
 
-          <div className="content-grid">
-            <section className="references-section">
+            <div className="hero-art" aria-label="Ilustração abstrata de conexões entre ideias">
+              <div className="art-orbit orbit-one" />
+              <div className="art-orbit orbit-two" />
+              <div className="art-orbit orbit-three" />
+
+              <svg className="art-connections" viewBox="0 0 460 300" fill="none">
+                <path d="M225 146 L120 76 L57 126" />
+                <path d="M225 146 L340 67 L397 123" />
+                <path d="M225 146 L330 222 L395 195" />
+                <path d="M225 146 L111 229 L53 194" />
+                <path d="M120 76 L174 33 L340 67" />
+                <path d="M111 229 L190 268 L330 222" />
+                <path d="M57 126 L53 194" />
+                <path d="M397 123 L395 195" />
+              </svg>
+
+              <div className="art-node node-main">
+                <Sprout size={27} strokeWidth={1.5} />
+              </div>
+              <div className="art-node node-ai"><Sparkles size={17} /></div>
+              <div className="art-node node-design"><Lightbulb size={17} /></div>
+              <div className="art-node node-code"><span>{"</>"}</span></div>
+              <div className="art-node node-science"><Leaf size={16} /></div>
+              <div className="art-node node-small-one" />
+              <div className="art-node node-small-two" />
+
+              <span className="art-label label-ai">INTELIGÊNCIA ARTIFICIAL</span>
+              <span className="art-label label-design">DESIGN</span>
+              <span className="art-label label-code">TECNOLOGIA</span>
+              <span className="art-label label-science">CIÊNCIA</span>
+            </div>
+          </section>
+
+          <section className="garden-summary">
+            <div className="summary-intro">
+              <span className="summary-kicker">EM SEU JARDIM</span>
+              <strong>Um pouco do que você vem cultivando.</strong>
+            </div>
+
+            <div className="summary-stat">
+              <span className="summary-icon"><Bookmark size={15} /></span>
+              <div><strong>{String(references.length).padStart(2, "0")}</strong><small>Referências</small></div>
+            </div>
+
+            <div className="summary-stat">
+              <span className="summary-icon blue-summary"><Network size={15} /></span>
+              <div><strong>{topics.length.toString().padStart(2, "0")}</strong><small>Temas ativos</small></div>
+            </div>
+
+            <div className="summary-stat">
+              <span className="summary-icon orange-summary"><Lightbulb size={15} /></span>
+              <div><strong>08</strong><small>Ideias</small></div>
+            </div>
+
+            <div className="summary-stat summary-last">
+              <span className="summary-icon purple-summary"><Check size={15} /></span>
+              <div><strong>{organizedCount.toString().padStart(2, "0")}</strong><small>Organizadas</small></div>
+            </div>
+          </section>
+
+          <div className="content-columns">
+            <section className="content-primary">
               <div className="section-heading">
                 <div>
-                  <span className="section-kicker">THE COLLECTION</span>
-                  <h2>Recently planted</h2>
-                  <p>A few things you've brought into your garden.</p>
+                  <span className="section-overline">SEU ACERVO</span>
+                  <h2>Descobertas recentes</h2>
+                  <p>O que chamou sua atenção ultimamente.</p>
                 </div>
                 <button
                   className="text-link"
-                  onClick={() => setActivePage("My garden")}
+                  onClick={() => setActivePage("Biblioteca")}
                 >
-                  Explore all <ArrowUpRight size={15} />
+                  Ver biblioteca <ArrowRight size={14} />
                 </button>
               </div>
 
               <div className="reference-list">
-                {filteredReferences.length > 0 ? (
-                  filteredReferences.map((reference) => {
-                    const Icon =
-                      typeIcons[reference.type as keyof typeof typeIcons];
+                {filteredReferences.slice(0, 5).map((item, index) => {
+                  const Icon = iconByType[item.type];
 
-                    return (
-                      <article className="reference-item" key={reference.id}>
-                        <div className={`reference-icon ${reference.color}`}>
-                          <Icon size={20} strokeWidth={1.6} />
+                  return (
+                    <article className="reference-card" key={item.id}>
+                      <div className={`reference-symbol symbol-${item.type}`}>
+                        <Icon size={19} strokeWidth={1.7} />
+                      </div>
+
+                      <div className="reference-main">
+                        <div className="reference-category">
+                          {item.category}
+                          <span>·</span>
+                          {item.date}
                         </div>
-                        <div className="reference-content">
-                          <h3>{reference.title}</h3>
-                          <p>
-                            {reference.source}
-                            <span>·</span>
-                            {reference.category}
-                          </p>
-                        </div>
-                        <span className="reference-date">{reference.date}</span>
-                        <button className="more-button" aria-label="More options">
-                          <MoreHorizontal size={18} />
+                        <h3>{item.title}</h3>
+                        <p>{item.source}</p>
+                      </div>
+
+                      <div className="reference-trailing">
+                        <span className={`reference-status ${item.status === "Organizado" ? "done" : "waiting"}`}>
+                          <i />
+                          {item.status}
+                        </span>
+                        <button aria-label="Abrir referência">
+                          <ArrowUpRight size={17} />
                         </button>
-                      </article>
-                    );
-                  })
-                ) : (
-                  <div className="empty-state">
-                    <Search size={22} />
-                    <p>No references found.</p>
+                      </div>
+                    </article>
+                  );
+                })}
+
+                {filteredReferences.length === 0 && (
+                  <div className="empty-references">
+                    <Search size={20} />
+                    <strong>Nenhuma descoberta encontrada</strong>
+                    <span>Tente buscar por outro termo.</span>
                   </div>
                 )}
               </div>
 
               <button
-                className="add-reference"
+                className="add-inline"
                 onClick={() => setShowCapture(true)}
               >
-                <Plus size={17} />
-                Plant something new
+                <Plus size={16} />
+                Guardar uma nova descoberta
               </button>
             </section>
 
-            <aside className="right-column">
-              <section className="map-card">
-                <div className="card-topline">
-                  <span className="section-kicker">YOUR KNOWLEDGE</span>
+            <aside className="content-aside">
+              <section className="aside-section topics-section">
+                <div className="aside-heading">
+                  <div>
+                    <span className="section-overline">SEUS INTERESSES</span>
+                    <h2>Temas cultivados</h2>
+                  </div>
                   <button
-                    className="icon-button"
-                    aria-label="Explore knowledge map"
-                    onClick={() => setActivePage("Knowledge map")}
+                    className="subtle-icon-button"
+                    onClick={() => setActivePage("Biblioteca")}
+                    aria-label="Ver temas"
                   >
-                    <ArrowUpRight size={17} />
+                    <ArrowUpRight size={16} />
                   </button>
                 </div>
-                <h2>Everything is<br /><em>connected.</em></h2>
-                <p>
-                  Your references are the beginning of something bigger.
-                </p>
 
-                <div className="mini-graph">
-                  <svg viewBox="0 0 300 145" role="img" aria-label="Illustration of connected knowledge nodes">
-                    <path d="M150 72 L78 30 M150 72 L222 30 M150 72 L65 112 M150 72 L230 112 M78 30 L65 112 M222 30 L230 112" />
-                    <circle cx="150" cy="72" r="23" className="graph-center" />
-                    <circle cx="78" cy="30" r="13" className="graph-node sage-node" />
-                    <circle cx="222" cy="30" r="13" className="graph-node gold-node" />
-                    <circle cx="65" cy="112" r="11" className="graph-node blue-node" />
-                    <circle cx="230" cy="112" r="11" className="graph-node sage-node" />
-                    <circle cx="150" cy="72" r="5" className="graph-dot" />
-                    <circle cx="78" cy="30" r="3" className="graph-dot" />
-                    <circle cx="222" cy="30" r="3" className="graph-dot" />
-                    <circle cx="65" cy="112" r="3" className="graph-dot" />
-                    <circle cx="230" cy="112" r="3" className="graph-dot" />
-                  </svg>
-                  <span className="graph-label label-top">AI</span>
-                  <span className="graph-label label-right">Design</span>
-                  <span className="graph-label label-left">Ideas</span>
+                <div className="topic-collection">
+                  {topics.map((topic, index) => (
+                    <div className="topic-entry" key={topic.name}>
+                      <span className="topic-number">0{index + 1}</span>
+                      <span className="topic-color" style={{ background: topic.color }} />
+                      <span className="topic-name">{topic.name}</span>
+                      <span className="topic-count">{topic.count}</span>
+                    </div>
+                  ))}
                 </div>
 
                 <button
-                  className="map-link"
-                  onClick={() => setActivePage("Knowledge map")}
+                  className="aside-text-link"
+                  onClick={() => setActivePage("Biblioteca")}
                 >
-                  Explore your knowledge map <ArrowRight size={15} />
+                  Explorar todos os temas <ArrowRight size={14} />
                 </button>
               </section>
 
-              <section className="discovery-card">
-                <div className="discovery-icon">
-                  <Sparkles size={17} />
+              <section className="aside-section attention-section">
+                <div className="aside-heading">
+                  <div>
+                    <span className="section-overline">PEQUENOS CUIDADOS</span>
+                    <h2>Para revisar</h2>
+                  </div>
+                  <span className="pending-number">{pendingCount}</span>
                 </div>
-                <div>
-                  <span className="section-kicker">A LITTLE DISCOVERY</span>
-                  <h3>Good things take roots.</h3>
-                  <p>
-                    Save different perspectives on the same subject. That's
-                    where unexpected connections begin.
-                  </p>
-                </div>
+
+                {pendingCount > 0 ? (
+                  references
+                    .filter((item) => item.status === "Pendente")
+                    .map((item) => (
+                      <div className="pending-entry" key={item.id}>
+                        <div className="pending-marker"><Clock3 size={15} /></div>
+                        <div className="pending-copy">
+                          <strong>{item.title}</strong>
+                          <span>Aguardando organização</span>
+                        </div>
+                        <button
+                          onClick={() => organizeReference(item.id)}
+                          aria-label="Organizar referência"
+                          title="Marcar como organizada"
+                        >
+                          <Check size={16} />
+                        </button>
+                      </div>
+                    ))
+                ) : (
+                  <div className="nothing-pending">
+                    <Check size={16} />
+                    Tudo em dia. Seu jardim está cuidado.
+                  </div>
+                )}
+              </section>
+
+              <section className="aside-quote">
+                <span>“</span>
+                <p>O conhecimento não é uma coleção de respostas, mas uma rede de possibilidades.</p>
+                <small>UMA LEMBRANÇA DO SEU JARDIM</small>
               </section>
             </aside>
           </div>
 
-          <footer className="dashboard-footer">
-            <span>GROW AT YOUR OWN PACE.</span>
-            <span>MADE FOR THE CURIOUS <span className="footer-flower">✳</span></span>
+          <footer className="garden-footer">
+            <span><Sprout size={14} /> garden.</span>
+            <span>UM ESPAÇO PARA CULTIVAR CURIOSIDADE.</span>
+            <span>FEITO COM CALMA <Leaf size={13} /></span>
           </footer>
         </div>
       </section>
 
       {showCapture && (
         <div
-          className="modal-backdrop"
+          className="capture-overlay"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setShowCapture(false);
           }}
         >
-          <form className="capture-modal" onSubmit={addReference}>
-            <button
-              type="button"
-              className="modal-close"
-              onClick={() => setShowCapture(false)}
-              aria-label="Close"
-            >
-              <X size={18} />
-            </button>
-            <div className="modal-icon">
-              <Sprout size={23} />
+          <form className="capture-dialog" onSubmit={handleCapture}>
+            <div className="dialog-top">
+              <div className="dialog-icon"><Sprout size={21} /></div>
+              <button
+                type="button"
+                className="dialog-close"
+                onClick={() => setShowCapture(false)}
+                aria-label="Fechar"
+              >
+                <X size={18} />
+              </button>
             </div>
-            <span className="section-kicker">NEW DISCOVERY</span>
-            <h2>Plant a new idea.</h2>
-            <p>
-              Start with a title. Later, your garden will help you understand
-              and connect it.
-            </p>
-            <label htmlFor="reference-title">What did you discover?</label>
+
+            <span className="dialog-overline">ALIMENTAR SEU JARDIM</span>
+            <h2>Guardar uma descoberta.</h2>
+            <p>Uma ideia, um artigo ou qualquer coisa que você queira revisitar.</p>
+
+            <label htmlFor="capture-title">Título</label>
             <input
-              id="reference-title"
+              id="capture-title"
+              value={captureTitle}
+              onChange={(event) => setCaptureTitle(event.target.value)}
+              placeholder="O que despertou sua curiosidade?"
+              required
               autoFocus
-              value={newTitle}
-              onChange={(event) => setNewTitle(event.target.value)}
-              placeholder="An article, an idea, a discovery..."
             />
-            <button className="modal-submit" type="submit">
-              Add to my garden <ArrowRight size={16} />
+
+            <label htmlFor="capture-url">Link ou origem <small>OPCIONAL</small></label>
+            <div className="dialog-input-icon">
+              <Link2 size={16} />
+              <input
+                id="capture-url"
+                value={captureUrl}
+                onChange={(event) => setCaptureUrl(event.target.value)}
+                placeholder="https://..."
+              />
+            </div>
+
+            <div className="dialog-fields">
+              <div>
+                <label htmlFor="capture-type">Formato</label>
+                <select
+                  id="capture-type"
+                  value={captureType}
+                  onChange={(event) => setCaptureType(event.target.value)}
+                >
+                  <option value="artigo">Artigo</option>
+                  <option value="site">Site</option>
+                  <option value="vídeo">Vídeo</option>
+                  <option value="arquivo">Arquivo</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="capture-category">Tema</label>
+                <input
+                  id="capture-category"
+                  value={captureCategory}
+                  onChange={(event) => setCaptureCategory(event.target.value)}
+                  placeholder="Ex.: Tecnologia"
+                />
+              </div>
+            </div>
+
+            <button type="submit" className="dialog-submit">
+              <Plus size={17} /> Salvar no meu jardim
             </button>
+            <span className="dialog-footnote">Você poderá organizar e conectar essa referência depois.</span>
           </form>
         </div>
       )}
