@@ -27,6 +27,8 @@ import {
   Minimize,
   Network,
   X,
+  Lightbulb,
+  ExternalLink,
 } from "lucide-react";
 
 import "@xyflow/react/dist/style.css";
@@ -42,6 +44,14 @@ import type {
   Reference,
 } from "@/services/references";
 
+import {
+  listIdeas,
+  listIdeaConnections,
+  type Idea,
+  type IdeaConnection,
+} from "@/services/ideas";
+
+
 const nodeTypes = {
   knowledge: KnowledgeNode,
 };
@@ -49,16 +59,28 @@ const nodeTypes = {
 type Props = {
   references: Reference[];
   onOpenReference: (id: string) => void;
+  onOpenIdea: (id: string) => void;
 };
 
 function MapContent({
   references,
   onOpenReference,
+  onOpenIdea,
 }: Props) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("Todos");
   const [fullscreen, setFullscreen] = useState(false);
   const [showMinimap, setShowMinimap] = useState(true);
+
+  const [ideas, setIdeas] = useState<Idea[]>([]);
+
+  const [connections, setConnections] =
+    useState<IdeaConnection[]>([]);
+
+  const [showIdeas, setShowIdeas] = useState(true);
+
+  const [ideasError, setIdeasError] = useState("");
+
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -82,13 +104,49 @@ function MapContent({
     [references, category]
   );
 
+
   const graph = useMemo(
-    () => buildKnowledgeMap(visibleReferences),
-    [visibleReferences]
+    () =>
+      buildKnowledgeMap(
+        visibleReferences,
+        showIdeas ? ideas : [],
+        showIdeas ? connections : []
+      ),
+    [visibleReferences, ideas, connections, showIdeas]
   );
+
 
   const [nodes, setNodes, onNodesChange] =
     useNodesState<KnowledgeNodeType>(graph.nodes);
+
+
+  useEffect(() => {
+    let active = true;
+
+    Promise.all([
+      listIdeas(),
+      listIdeaConnections(),
+    ])
+      .then(([ideaRows, connectionRows]) => {
+        if (!active) return;
+
+        setIdeas(ideaRows);
+        setConnections(connectionRows);
+        setIdeasError("");
+      })
+      .catch(() => {
+        if (active) {
+          setIdeasError(
+            "Não foi possível carregar as ideias do mapa."
+          );
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
 
   useEffect(() => {
     setNodes(graph.nodes);
@@ -127,6 +185,7 @@ function MapContent({
     ).length
     : 0;
 
+
   const handleNodeClick: NodeMouseHandler<
     KnowledgeNodeType
   > = (_, node) => {
@@ -136,7 +195,15 @@ function MapContent({
     ) {
       onOpenReference(node.data.referenceId);
     }
+
+    if (
+      node.data.kind === "idea" &&
+      node.data.ideaId
+    ) {
+      onOpenIdea(node.data.ideaId);
+    }
   };
+
 
   async function toggleFullscreen() {
     try {
@@ -209,6 +276,29 @@ function MapContent({
         </div>
 
         <div className="map-toolbar-actions">
+
+
+          <a
+            href="/mapa"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="map-external-button"
+            title="Abrir mapa em nova aba"
+            aria-label="Abrir mapa em nova aba"
+          >
+            <ExternalLink size={17} strokeWidth={1.7} />
+          </a>
+
+
+          <button
+            title={showIdeas ? "Ocultar ideias" : "Exibir ideias"}
+            aria-label="Alternar ideias no mapa"
+            aria-pressed={showIdeas}
+            onClick={() => setShowIdeas((value) => !value)}
+          >
+            <Lightbulb size={18} />
+          </button>
+
           <select
             aria-label="Filtrar por tema"
             value={category}
@@ -262,9 +352,15 @@ function MapContent({
           </button>
         </div>
       </header>
+      {ideasError && (
+        <p className="map-ideas-error" role="alert">
+          {ideasError}
+        </p>
+      )}
 
       <div className="map-canvas">
-        {visibleReferences.length === 0 ? (
+        {visibleReferences.length === 0 &&
+          !(showIdeas && ideas.length > 0) ? (
           <div className="map-empty">
             <Network size={38} strokeWidth={1.3} />
 
@@ -287,11 +383,13 @@ function MapContent({
             nodesDraggable
             deleteKeyCode={null}
             minZoom={0.15}
-            maxZoom={2.5}
+            maxZoom={3}
             fitView
-            fitViewOptions={{ padding: 0.25 }}
+            fitViewOptions={{
+              padding: 0.15,
+              maxZoom: 1.3,
+            }}
             proOptions={{ hideAttribution: true }}
-            colorMode="light"
           >
             <Background
               variant={BackgroundVariant.Dots}
@@ -311,6 +409,9 @@ function MapContent({
                 pannable
                 zoomable
                 nodeColor={(node) => {
+                  if (node.data.kind === "idea") {
+                    return "#8B78B4";
+                  }
                   if (node.data.kind === "garden") {
                     return "#E97836";
                   }
@@ -330,6 +431,15 @@ function MapContent({
 
       <footer className="map-footer">
         <div className="map-legend">
+          <span>
+            <i className="legend-idea" />
+            Ideias
+          </span>
+
+          <span>
+            <i className="legend-connection" />
+            Vínculos
+          </span>
           <span>
             <i className="legend-garden" />
             Jardim

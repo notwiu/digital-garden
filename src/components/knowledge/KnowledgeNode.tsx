@@ -15,7 +15,9 @@ import {
   Globe,
   Video,
   Paperclip,
+  Lightbulb,
 } from "lucide-react";
+import { MATURITY } from "@/services/ideas";
 
 import type {
   KnowledgeNode as KnowledgeNodeType,
@@ -32,12 +34,16 @@ function KnowledgeNode({
   data,
   selected,
 }: NodeProps<KnowledgeNodeType>) {
+
   const Icon =
     data.kind === "garden"
       ? Sprout
       : data.kind === "category"
         ? Folder
-        : referenceIcons[data.referenceType ?? "artigo"];
+        : data.kind === "idea"
+          ? Lightbulb
+          : referenceIcons[data.referenceType ?? "artigo"];
+
 
   return (
     <div
@@ -57,7 +63,18 @@ function KnowledgeNode({
       />
 
 
-      <div className="knowledge-node-symbol">
+
+      <div
+        className="knowledge-node-symbol"
+        style={
+          data.kind === "idea" && data.maturity
+            ? {
+              borderColor: MATURITY[data.maturity].color,
+            }
+            : undefined
+        }
+      >
+
         <Handle
           type="target"
           position={Position.Top}
@@ -101,6 +118,18 @@ function KnowledgeNode({
         </small>
       )}
 
+      {data.kind === "idea" && data.maturity && (
+        <small
+          className="knowledge-node-maturity"
+          style={{
+            color: MATURITY[data.maturity].color,
+          }}
+        >
+          {MATURITY[data.maturity].label}
+        </small>
+      )}
+
+
       <Handle
         type="source"
         position={Position.Right}
@@ -110,5 +139,6 @@ function KnowledgeNode({
     </div>
   );
 }
+
 
 export default memo(KnowledgeNode);

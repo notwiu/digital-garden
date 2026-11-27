@@ -21,6 +21,7 @@ import {
   formatFileSize,
 } from "@/services/storage";
 import KnowledgeMap from "@/components/knowledge/KnowledgeMap";
+import IdeasLab from "@/components/ideas/IdeasLab";
 
 const navigation = [
   {
@@ -77,6 +78,8 @@ export default function Home() {
     useState<File | null>(null);
   const [previewFile, setPreviewFile] =
     useState<Reference | null>(null);
+  const [requestedIdeaId, setRequestedIdeaId] =
+    useState<string | null>(null);
 
   function report(error: unknown) {
     setStorageError(error && typeof error === "object" && "message" in error
@@ -249,6 +252,8 @@ export default function Home() {
   const isOverview = activePage === "Visão geral";
   const isKnowledgeMap =
     activePage === "Mapa de conhecimento";
+  const isIdeasLab =
+    activePage === "Laboratório de ideias";
   const isLibrary = activePage === "Biblioteca";
   const [date, setDate] = useState("");
   useEffect(() => {
@@ -325,7 +330,33 @@ export default function Home() {
   }
 
   function resetFilters() { setTypeFilter("Todos"); setCategoryFilter("Todos"); setStatusFilter("Todos"); setFavoritesOnly(false); setSearch(""); }
-  function navigate(page: string) { setActivePage(page); resetFilters(); setSelectedId(null); }
+  function navigate(page: string) { setActivePage(page); resetFilters(); setSelectedId(null); setRequestedIdeaId(null); }
+
+  useEffect(() => {
+    const params = new URLSearchParams(
+      window.location.search
+    );
+
+    const ideaId = params.get("idea");
+    const referenceId = params.get("reference");
+
+    if (ideaId) {
+      navigate("Laboratório de ideias");
+      setRequestedIdeaId(ideaId);
+    } else if (referenceId) {
+      navigate("Biblioteca");
+      setSelectedId(referenceId);
+    }
+
+    if (ideaId || referenceId) {
+      window.history.replaceState(
+        window.history.state,
+        "",
+        "/"
+      );
+    }
+  }, []);
+
 
   return (
     <main className="garden-shell">
@@ -341,15 +372,19 @@ export default function Home() {
       <section className="garden-main">
         <header className="garden-topbar"><strong>{activePage}</strong><div className="topbar-tools"><label className="garden-search"><Search size={16} /><input ref={searchRef} aria-label="Buscar referências" placeholder="Buscar" value={search} onChange={e => { setSearch(e.target.value); if (!isOverview && !isLibrary) setActivePage("Biblioteca"); }} /><kbd>Ctrl K</kbd></label><div className="notice-container"><button className="icon-action" aria-label="Notificações" onClick={() => setNoticeOpen(v => !v)}><Bell size={19} />{pendingCount > 0 && <i />}</button>{noticeOpen && <div className="notice-popover"><strong>Notificações</strong><p>{pendingCount ? `${pendingCount} referência(s) para organizar.` : "Nenhuma pendência."}</p><button onClick={() => { navigate("Visão geral"); setNoticeOpen(false); }}>Ver visão geral</button></div>}</div><button className="top-capture" disabled={busy || !storageReady} onClick={openCapture}><Plus size={17} /><span>Nova referência</span></button></div></header>
         <div className="garden-content">
-          <section className="page-intro"><div><p className="intro-date">{date}</p><h1>{isOverview ? "Meu jardim" : activePage}</h1><p>
-            {isOverview
-              ? "Suas referências, temas e descobertas."
-              : isLibrary
-                ? "Todas as suas referências em um só lugar."
-                : isKnowledgeMap
-                  ? "Explore as conexões do seu conhecimento."
-                  : "Esta área ainda está em desenvolvimento."}
-          </p></div></section>
+          <section className="page-intro"><div><p className="intro-date">{date}</p><h1>{isOverview ? "Meu jardim" : activePage}</h1>
+            <p>
+              {isOverview
+                ? "Suas referências, temas e descobertas."
+                : isLibrary
+                  ? "Todas as suas referências em um só lugar."
+                  : isKnowledgeMap
+                    ? "Explore as conexões do seu conhecimento."
+                    : isIdeasLab
+                      ? "Onde seu conhecimento ganha forma."
+                      : "Esta área ainda está em desenvolvimento."}
+            </p>
+          </div></section>
           {storageError && <p role="alert" className="storage-warning">{storageError}</p>}
           {!storageReady && <p role="status">{storageError ? "Não foi possível carregar." : "Carregando referências..."}</p>}
           {feedback && <p role="status">{feedback}</p>}
@@ -367,6 +402,8 @@ export default function Home() {
 
               </div>
             </>
+
+
           ) : isKnowledgeMap ? (
             <KnowledgeMap
               references={references}
@@ -377,6 +414,20 @@ export default function Home() {
 
                 setSelectedId(id);
               }}
+              onOpenIdea={(id) => {
+                if (document.fullscreenElement) {
+                  void document.exitFullscreen();
+                }
+
+                navigate("Laboratório de ideias");
+                setRequestedIdeaId(id);
+              }}
+            />
+          ) : isIdeasLab ? (
+            <IdeasLab
+              references={references}
+              initialIdeaId={requestedIdeaId}
+              onOpenReference={(id) => setSelectedId(id)}
             />
           ) : (
             <button
@@ -386,6 +437,8 @@ export default function Home() {
               Voltar à visão geral
             </button>
           )}
+
+
 
         </div>
       </section>
