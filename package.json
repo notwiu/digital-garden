@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@fullcalendar/react": "^7.1.5",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.119.2",
     "@tiptap/extension-task-item": "^3.35.1",
@@ -17,10 +18,14 @@
     "@tiptap/react": "^3.35.1",
     "@tiptap/starter-kit": "^3.35.1",
     "@xyflow/react": "^13.0.3",
+    "google-auth-library": "^11.3.4",
+    "googleapis": "^190.0.0",
     "lucide-react": "^1.80.0",
     "next": "16.4.6",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "server-only": "^0.0.1",
+    "temporal-polyfill": "^1.0.8"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "4.3.3",

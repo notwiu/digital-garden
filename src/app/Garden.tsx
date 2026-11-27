@@ -23,6 +23,7 @@ import {
 import KnowledgeMap from "@/components/knowledge/KnowledgeMap";
 import IdeasLab from "@/components/ideas/IdeasLab";
 import ProjectsLab from "@/components/projects/ProjectsLab";
+import CalendarLab from "@/components/calendar/CalendarLab";
 
 const navigation = [
   {
@@ -257,6 +258,7 @@ export default function Home() {
   const isIdeasLab =
     activePage === "Laboratório de ideias";
   const isLibrary = activePage === "Biblioteca";
+  const isCalendar = activePage === "Agenda";
   const [date, setDate] = useState("");
   useEffect(() => {
     setDate(new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" }).format(new Date()));
@@ -387,7 +389,10 @@ export default function Home() {
                       ? "Onde seu conhecimento ganha forma."
                       : isProjects
                         ? "Transforme suas ideias em realidade."
-                        : "Esta área ainda está em desenvolvimento."}
+                        : isCalendar
+                          ? "Organize seu tempo e seus compromissos."
+                          : "Esta área ainda está em desenvolvimento."
+              }
             </p>
 
           </div></section>
@@ -438,6 +443,8 @@ export default function Home() {
             />
           ) : isProjects ? (
             <ProjectsLab />
+          ) : isCalendar ? (
+            <CalendarLab />
           ) : (
             <button
               className="text-link"

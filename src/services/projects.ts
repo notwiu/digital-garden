@@ -1,5 +1,6 @@
 
 import { createClient } from "@/lib/supabase/client";
+import { syncGoogleCalendarSafely } from "./google-calendar";
 
 export type ProjectStatus =
   | "planejamento"
@@ -144,6 +145,7 @@ export async function listProjects():
 
 export async function createProject(
   fields: Partial<ProjectFields>
+
 ): Promise<ProjectWithTasks> {
 
   const { db, uid } = await context();
@@ -158,6 +160,8 @@ export async function createProject(
     .single();
 
   if (error) throw error;
+
+  await syncGoogleCalendarSafely();
 
   return data as ProjectWithTasks;
 }
@@ -179,6 +183,8 @@ export async function updateProject(
 
   if (error) throw error;
 
+  await syncGoogleCalendarSafely();
+
   return data as Project;
 }
 
@@ -194,6 +200,8 @@ export async function deleteProject(id: string) {
     .single();
 
   if (error) throw error;
+
+  await syncGoogleCalendarSafely();
 }
 
 export async function createTask(
@@ -214,6 +222,8 @@ export async function createTask(
 
   if (error) throw error;
 
+  await syncGoogleCalendarSafely();
+
   return data as ProjectTask;
 }
 
@@ -233,6 +243,8 @@ export async function updateTask(
 
   if (error) throw error;
 
+  await syncGoogleCalendarSafely();
+
   return data as ProjectTask;
 }
 
@@ -247,6 +259,8 @@ export async function deleteTask(id: string) {
     .single();
 
   if (error) throw error;
+
+  await syncGoogleCalendarSafely();
 }
 
 export function getProjectProgress(
