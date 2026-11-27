@@ -22,6 +22,7 @@ import {
 } from "@/services/storage";
 import KnowledgeMap from "@/components/knowledge/KnowledgeMap";
 import IdeasLab from "@/components/ideas/IdeasLab";
+import ProjectsLab from "@/components/projects/ProjectsLab";
 
 const navigation = [
   {
@@ -252,6 +253,7 @@ export default function Home() {
   const isOverview = activePage === "Visão geral";
   const isKnowledgeMap =
     activePage === "Mapa de conhecimento";
+  const isProjects = activePage === "Projetos";
   const isIdeasLab =
     activePage === "Laboratório de ideias";
   const isLibrary = activePage === "Biblioteca";
@@ -373,6 +375,7 @@ export default function Home() {
         <header className="garden-topbar"><strong>{activePage}</strong><div className="topbar-tools"><label className="garden-search"><Search size={16} /><input ref={searchRef} aria-label="Buscar referências" placeholder="Buscar" value={search} onChange={e => { setSearch(e.target.value); if (!isOverview && !isLibrary) setActivePage("Biblioteca"); }} /><kbd>Ctrl K</kbd></label><div className="notice-container"><button className="icon-action" aria-label="Notificações" onClick={() => setNoticeOpen(v => !v)}><Bell size={19} />{pendingCount > 0 && <i />}</button>{noticeOpen && <div className="notice-popover"><strong>Notificações</strong><p>{pendingCount ? `${pendingCount} referência(s) para organizar.` : "Nenhuma pendência."}</p><button onClick={() => { navigate("Visão geral"); setNoticeOpen(false); }}>Ver visão geral</button></div>}</div><button className="top-capture" disabled={busy || !storageReady} onClick={openCapture}><Plus size={17} /><span>Nova referência</span></button></div></header>
         <div className="garden-content">
           <section className="page-intro"><div><p className="intro-date">{date}</p><h1>{isOverview ? "Meu jardim" : activePage}</h1>
+
             <p>
               {isOverview
                 ? "Suas referências, temas e descobertas."
@@ -382,8 +385,11 @@ export default function Home() {
                     ? "Explore as conexões do seu conhecimento."
                     : isIdeasLab
                       ? "Onde seu conhecimento ganha forma."
-                      : "Esta área ainda está em desenvolvimento."}
+                      : isProjects
+                        ? "Transforme suas ideias em realidade."
+                        : "Esta área ainda está em desenvolvimento."}
             </p>
+
           </div></section>
           {storageError && <p role="alert" className="storage-warning">{storageError}</p>}
           {!storageReady && <p role="status">{storageError ? "Não foi possível carregar." : "Carregando referências..."}</p>}
@@ -423,12 +429,15 @@ export default function Home() {
                 setRequestedIdeaId(id);
               }}
             />
+
           ) : isIdeasLab ? (
             <IdeasLab
               references={references}
               initialIdeaId={requestedIdeaId}
               onOpenReference={(id) => setSelectedId(id)}
             />
+          ) : isProjects ? (
+            <ProjectsLab />
           ) : (
             <button
               className="text-link"
@@ -437,6 +446,7 @@ export default function Home() {
               Voltar à visão geral
             </button>
           )}
+
 
 
 
